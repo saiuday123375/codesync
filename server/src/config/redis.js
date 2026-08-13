@@ -2,6 +2,7 @@ const Redis = require('ioredis');
 const logger = require('../utils/logger');
 
 const redisClient = new Redis(process.env.REDIS_URL, {
+  maxRetriesPerRequest: null,
   retryStrategy: (times) => {
     // Retry connection logic
     const delay = Math.min(times * 50, 2000);
