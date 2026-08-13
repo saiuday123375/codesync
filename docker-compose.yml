@@ -1,0 +1,71 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:6
+    container_name: codesync-mongo
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: codesync-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  server:
+    build: ./server
+    container_name: codesync-server
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/codesync}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - JWT_SECRET=${JWT_SECRET:-your_secret}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-your_refresh_secret}
+      - JUDGE0_API_KEY=${JUDGE0_API_KEY:-your_key}
+      - CLIENT_URL=${CLIENT_URL:-http://localhost:3000}
+      - SENTRY_DSN=${SENTRY_DSN}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5000/').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  client:
+    build:
+      context: ./client
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:5000/api}
+        - VITE_SOCKET_URL=${VITE_SOCKET_URL:-http://localhost:5000}
+        - VITE_SENTRY_DSN=${VITE_SENTRY_DSN}
+    container_name: codesync-client
+    ports:
+      - "3000:80"
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  mongo-data:
