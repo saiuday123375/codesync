@@ -38,7 +38,9 @@ const DashboardPage = () => {
     setIsCreating(true);
     try {
       const room = await createRoom(roomName, language);
-      toast.success('Room created successfully');
+      const shareLink = `${window.location.origin}/room/${room.roomId}`;
+      await navigator.clipboard.writeText(shareLink);
+      toast.success(`Room created! Link copied to clipboard`, { duration: 4000 });
       navigate(`/room/${room.roomId}`);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Error creating room');
@@ -167,15 +169,28 @@ const DashboardPage = () => {
               myRooms.map((room) => (
                 <div 
                   key={room._id} 
-                  onClick={() => navigate(`/room/${room.roomId}`)}
-                  className="bg-[#1e1e1e] border border-gray-700 p-4 rounded cursor-pointer hover:border-[#007acc] hover:bg-[#2d2d2d] transition group"
+                  className="bg-[#1e1e1e] border border-gray-700 p-4 rounded hover:border-[#007acc] hover:bg-[#2d2d2d] transition group"
                 >
-                  <div className="flex justify-between items-start mb-2">
+                  <div className="flex justify-between items-start mb-2 cursor-pointer" onClick={() => navigate(`/room/${room.roomId}`)}>
                     <h3 className="font-bold text-white group-hover:text-[#007acc] transition">{room.name}</h3>
                     <span className="text-xs px-2 py-1 bg-gray-700 rounded-full text-gray-300 uppercase tracking-wider">{room.language}</span>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    Created: {new Date(room.createdAt).toLocaleDateString()}
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-xs text-gray-500">
+                      Created: {new Date(room.createdAt).toLocaleDateString()}
+                    </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const link = `${window.location.origin}/room/${room.roomId}`;
+                        navigator.clipboard.writeText(link);
+                        toast.success('Room link copied!');
+                      }}
+                      className="text-xs bg-gray-700 hover:bg-[#007acc] text-gray-300 hover:text-white px-2 py-1 rounded transition"
+                      title="Copy shareable link"
+                    >
+                      📋 Copy Link
+                    </button>
                   </div>
                 </div>
               ))
