@@ -90,7 +90,21 @@ const RoomPage = () => {
 
     const handleCodeUpdate = ({ code }) => {
       isRemoteChange.current = true;
-      setCurrentCode(code);
+      const editor = editorRef.current;
+      if (editor) {
+        const currentPosition = editor.getPosition();
+        const currentScrollTop = editor.getScrollTop();
+        setCurrentCode(code);
+        // Restore cursor and scroll after React re-renders
+        requestAnimationFrame(() => {
+          if (editorRef.current && currentPosition) {
+            editorRef.current.setPosition(currentPosition);
+            editorRef.current.setScrollTop(currentScrollTop);
+          }
+        });
+      } else {
+        setCurrentCode(code);
+      }
     };
 
     const handleLanguageUpdated = ({ language: newLang }) => {
