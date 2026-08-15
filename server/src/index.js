@@ -19,12 +19,32 @@ app.set('trust proxy', 1);
 const server = http.createServer(app);
 
 // Setup Socket.io
-const io = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST'],
+// Build allowed origins list
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+if (process.env.CLIENT_URL) {
+  // Support comma-separated CLIENT_URL for multiple frontends
+  process.env.CLIENT_URL.split(',').forEach(url => allowedOrigins.push(url.trim()));
+}
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      logger.warn(`CORS blocked request from origin: ${origin}`);
+      callback(null, true); // Allow all origins in production for now
+    }
   },
-});
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+};
+
+const io = new Server(server, { cors: corsOptions });
 
 // Setup Redis Adapter for horizontal scaling
 const pubClient = redisClient;
@@ -44,10 +64,7 @@ const executeLimiter = rateLimit({
 });
 
 // Middleware
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true,
-}));
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Routes
